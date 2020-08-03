@@ -1,2 +1,2 @@
 #! /bin/bash
-/usr/bin/sudo -E /usr/bin/python3 /home/pi/ledstrip.py &> /home/pi/ledstrip.log
+/usr/bin/sudo -E /usr/bin/python3 /home/pi/daylight_alarm/ledstrip.py &> /home/pi/daylight_alarm/ledstrip.log
