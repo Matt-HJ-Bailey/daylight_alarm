@@ -23,7 +23,7 @@ def display_image(strip: ws.PixelStrip,
     light_pos = pd.read_csv("./light_coordinates.csv")
     light_arr= np.vstack([light_pos["X"].to_numpy() / light_pos["X"].max(),
                           light_pos["Y"].to_numpy() / light_pos["Y"].max()]).T
-    la = LightArray(light_pos)
+    la = LightArray(light_arr)
     la.image_to_strip(strip=strip, im=image, ids=light_pos["ID"])
     
 def alternate_colors(strip: ws.PixelStrip,

@@ -20,6 +20,8 @@ except ImportError:
 
 class LightArray():
     def __init__(self, position_data):
+        print(position_data)
+        assert position_data.shape[1] == 2
         self.kdtree = scipy.spatial.cKDTree(position_data,
                                             compact_nodes=True,
                                             copy_data=True)
@@ -27,7 +29,7 @@ class LightArray():
     def image_to_colors(self, im):
         pixel_positions = np.array([[x / im.width, y / im.height]
                                     for x in range(im.width) for y in range(im.height)])
-        distances, regions = self.kdtree.query(pixel_positions)
+        _, regions = self.kdtree.query(pixel_positions)
         color_data = np.array(im.getdata())
         ret_colors = np.zeros([self.kdtree.data.shape[0], 3], dtype=int)
         for region in range(min(regions), max(regions)):
@@ -39,8 +41,9 @@ class LightArray():
     def image_to_strip(self, strip, im, ids):
         colors = self.image_to_colors(im)
         for i in range(colors.shape[0]):
-            this_color = ws.Color(*colors[i])
-            strip.setPixelColor(i, this_color)
+            print(colors[i, 0], colors[i, 1], colors[i, 2])
+            this_color = ws.Color(int(colors[i,0]), int(colors[i, 1]), int(colors[i, 2]))
+            strip.setPixelColor(ids[i], this_color)
         strip.show()
         
     def plot_onto(self, ax=None, im=None):
