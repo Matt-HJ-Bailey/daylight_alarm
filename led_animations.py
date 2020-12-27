@@ -199,3 +199,9 @@ def sunrise_animation(strip, total_time=3600, reverse=False):
         time_diff = t_2 - t_1
         if time_diff < brightening_time / steps:
             time.sleep((brightening_time / steps) - time_diff)
+            
+if __name__ == "__main__":
+    NUM_LEDS = 150
+    LED_PIN = 18
+    STRIP = ws.PixelStrip(NUM_LEDS, LED_PIN)
+    theater_chase_rainbow(STRIP)
