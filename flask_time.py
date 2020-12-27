@@ -28,7 +28,27 @@ from led_animations import sunrise_animation, alternate_colors, display_image
 CONFIG = Config()
 
 WEATHER_ANIMATIONS = defaultdict(lambda: sunrise_animation)
+WEATHER_ANIMATIONS["clear sky"] = lambda strip, runtime, reverse: display_image(strip=strip,
+                                                                                image_filename="sunrise.jpg",
+                                                                                runtime=runtime,
+                                                                                reverse=reverse)
+WEATHER_ANIMATIONS["few clouds"] = WEATHER_ANIMATIONS["clear sky"]
+WEATHER_ANIMATIONS["scattered clouds"] = WEATHER_ANIMATIONS["clear sky"]
+WEATHER_ANIMATIONS["broken clouds"] = WEATHER_ANIMATIONS["clear sky"]
 
+WEATHER_ANIMATIONS["rain"] = lambda strip, runtime, reverse: display_image(strip=strip,
+                                                                           image_filename="rain.jpg",
+                                                                           runtime=runtime,
+                                                                           reverse=reverse)
+WEATHER_ANIMATIONS["rain"] = WEATHER_ANIMATIONS["shower rain"]                                                                   
+WEATHER_ANIMATIONS["snow"] = lambda strip, runtime, reverse: display_image(strip=strip,
+                                                                           image_filename="snow.jpg",
+                                                                           runtime=runtime,
+                                                                           reverse=reverse)
+WEATHER_ANIMATIONS["thunderstorm"] = lambda strip, runtime, reverse: display_image(strip=strip,
+                                                                           image_filename="thunrerstorm.jpg",
+                                                                           runtime=runtime,
+                                                                           reverse=reverse)
 NUM_LEDS = 150
 LED_PIN = 18
 RUNTIME = 20 * 60
@@ -59,14 +79,14 @@ def get_weather(location: str = "Oxford,GB") -> str:
 def turn_lights_on(strip: ws.PixelStrip, runtime: float = 600):
     print("Turning the lights on")
     weather = get_weather()
-    # WEATHER_ANIMATIONS[weather](strip, runtime)
-    display_image(strip, "./sunrise.jpg")
+    WEATHER_ANIMATIONS[weather](strip, runtime, reverse=False)
 
 
 def turn_lights_off(strip: ws.PixelStrip, runtime: float = 600):
     print("Turning the lights off")
     weather = get_weather()
     WEATHER_ANIMATIONS[weather](strip, runtime, reverse=True)
+
 
 
 @app.route('/', methods=['GET', 'POST'])

@@ -18,13 +18,14 @@ from lightarray import LightArray
 from typing import Optional, Iterable
 
 def display_image(strip: ws.PixelStrip,
-                  image_filename:str):
+                  image_filename:str,
+runtime, reverse):
     image = Image.open(image_filename)
     light_pos = pd.read_csv("./light_coordinates.csv")
     light_arr= np.vstack([light_pos["X"].to_numpy() / light_pos["X"].max(),
                           light_pos["Y"].to_numpy() / light_pos["Y"].max()]).T
     la = LightArray(light_arr)
-    la.image_to_strip(strip=strip, im=image, ids=light_pos["ID"])
+    la.blend_image_to_strip(strip=strip, im=image, ids=light_pos["ID"], runtime=runtime, reverse=reverse)
     
 def alternate_colors(strip: ws.PixelStrip,
                      colors:Optional[Iterable[ws.Color]]=None):

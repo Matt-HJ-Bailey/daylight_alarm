@@ -46,11 +46,15 @@ class LightArray():
             strip.setPixelColor(int(ids[i]), this_color)
         strip.show()
         
-    def blend_image_to_strip(self, strip, im, ids, time_over=600):
+    def blend_image_to_strip(self, strip, im, ids, runtime=600, reverse=False):
         colors = self.image_to_colors(im)
         NUM_STEPS = 255
-        TIME_PER_STEP = time_over / NUM_STEPS
-        for step in range(NUM_STEPS):
+        TIME_PER_STEP = runtime / NUM_STEPS
+        if reverse:
+            steps = range(NUM_STEPS, 0, -1)
+        else:
+            steps = range(NUM_STEPS)
+        for step in steps:
             time_before_set = time.time()
             for i in range(colors.shape[0]):
                 this_color = ws.Color(*[int(item * step / NUM_STEPS)
