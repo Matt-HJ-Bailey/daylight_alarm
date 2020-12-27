@@ -23,7 +23,7 @@ from flask import Flask, render_template, flash, redirect
 
 from config import Config
 from timeform import TimeForm
-from led_animations import sunrise_animation
+from led_animations import sunrise_animation, alternate_colors
 
 CONFIG = Config()
 
@@ -36,7 +36,7 @@ STRIP = ws.PixelStrip(NUM_LEDS, LED_PIN)
 
 app = Flask(__name__)
 app.config.from_object(CONFIG)
-app.debug = False 
+app.debug = False
 
 
 def get_weather(location: str = "Oxford,GB") -> str:
@@ -59,7 +59,8 @@ def get_weather(location: str = "Oxford,GB") -> str:
 def turn_lights_on(strip: ws.PixelStrip, runtime: float = 600):
     print("Turning the lights on")
     weather = get_weather()
-    WEATHER_ANIMATIONS[weather](strip, runtime)
+    # WEATHER_ANIMATIONS[weather](strip, runtime)
+    alternate_colors(strip)
 
 
 def turn_lights_off(strip: ws.PixelStrip, runtime: float = 600):
@@ -81,6 +82,10 @@ def change_time():
         # dates getting involved... argh!
         off_time = (datetime.datetime.combine(datetime.date.today(),
                      on_time) + datetime.timedelta(minutes=20)).time()
+        
+        with open("./times.txt", "w") as fi:
+            fi.write(on_time.strftime("%H:%M:%S") + "\n")
+            fi.write(off_time.strftime("%H:%M:%S") + "\n")
         schedule.every().day.at(on_time.strftime("%H:%M:%S")).do(turn_lights_on, STRIP)
         schedule.every().day.at(off_time.strftime("%H:%M:%S")).do(turn_lights_off, STRIP)
 
@@ -97,6 +102,11 @@ def check_schedule(sleep_time: int = 60):
 
 if __name__ == "__main__":
     STRIP.begin()
+    
+    with open("./times.txt", "w") as fi:
+        schedule.every().day.at(fi.readline().strip()).do(turn_lights_on, STRIP)
+        schedule.every().day.at(fi.readline().strip()).do(turn_lights_off, STRIP)
+    
     thread = Thread(target=check_schedule, args=[60])
     thread.start()
 
