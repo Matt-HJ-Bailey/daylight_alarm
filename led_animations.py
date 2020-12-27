@@ -2,11 +2,31 @@
 A set of animations for a WS2812b strip, taken from
 https://tutorials-raspberrypi.com/connect-control-raspberry-pi-ws2812-rgb-led-strips/
 """
-
-import rpi_ws281x as ws
+try:
+    import rpi_ws281x as ws
+except ImportError:
+    import ws_stub as ws
+    
 import random
 import time
 
+from typing import Optional, Iterable
+
+def alternate_colors(strip: ws.PixelStrip,
+                     colors:Optional[Iterable[ws.Color]]=None):
+    """
+    Show a set of colours along the strip.
+    
+    :param strip: the strip to show the colors on
+    :param colors: a list of colors to show
+    """
+    if colors is None:
+        colors = [ws.Color(255, 0, 0),
+                  ws.Color(0, 255, 0),
+                  ws.Color(0, 0, 255)]
+    for i in range(strip.numPixels()):
+        strip.setPixelColor(i, colors[i % len(colors)])
+    strip.show()
 
 def get_rainbow_color(pos: int) -> ws.Color:
     """
@@ -134,3 +154,34 @@ def dither_fade(
     time_diff = end_time - start_time
     if time_diff < dither_time:
         time.sleep(dither_time - time_diff)
+
+
+def sunrise_animation(strip, total_time=3600, reverse=False):
+    steps = 256
+    dither_time = total_time / 2
+    brightening_time = total_time - dither_time
+
+    for step in range(steps):
+        frac = step / steps
+        if reverse:
+            frac = 1.0 - frac
+        SKYBLUE = ws.Color(
+            max(int(135 * frac), 1), max(int(206 * frac), 1), max(int(235 * frac), 1)
+        )
+        SUNRISE = ws.Color(
+            max(int(255 * frac), 1), max(int(191 * frac), 1), max(int(39 * frac), 1)
+        )
+        sunrise_width = int(strip.numPixels() * 0.1)
+        sunrise_start = int(frac * strip.numPixels())
+        sunrise_end = sunrise_start + sunrise_width
+        sky_pixels = [i for i in range(strip.numPixels())]
+        for pixel in range(sunrise_start, sunrise_end):
+            if pixel in sky_pixels:
+                sky_pixels.remove(pixel)
+            strip.setPixelColor(pixel, SUNRISE)
+        t_1 = time.time()
+        dither_fade(strip, SKYBLUE, sky_pixels, (brightening_time - 1) / steps)
+        t_2 = time.time()
+        time_diff = t_2 - t_1
+        if time_diff < brightening_time / steps:
+            time.sleep((brightening_time / steps) - time_diff)
