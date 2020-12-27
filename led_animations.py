@@ -10,8 +10,22 @@ except ImportError:
 import random
 import time
 
+import pandas as pd
+from PIL import Image
+import numpy as np
+from lightarray import LightArray
+
 from typing import Optional, Iterable
 
+def display_image(strip: ws.PixelStrip,
+                  image_filename:str):
+    image = Image.open(image_filename)
+    light_pos = pd.read_csv("./light_coordinates.csv")
+    light_arr= np.vstack([light_pos["X"].to_numpy() / light_pos["X"].max(),
+                          light_pos["Y"].to_numpy() / light_pos["Y"].max()]).T
+    la = LightArray(light_pos)
+    la.image_to_strip(strip=strip, im=image, ids=light_pos["ID"])
+    
 def alternate_colors(strip: ws.PixelStrip,
                      colors:Optional[Iterable[ws.Color]]=None):
     """

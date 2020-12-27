@@ -23,7 +23,7 @@ from flask import Flask, render_template, flash, redirect
 
 from config import Config
 from timeform import TimeForm
-from led_animations import sunrise_animation, alternate_colors
+from led_animations import sunrise_animation, alternate_colors, display_image
 
 CONFIG = Config()
 
@@ -60,7 +60,7 @@ def turn_lights_on(strip: ws.PixelStrip, runtime: float = 600):
     print("Turning the lights on")
     weather = get_weather()
     # WEATHER_ANIMATIONS[weather](strip, runtime)
-    alternate_colors(strip)
+    display_image(strip, "./sunrise.jpg")
 
 
 def turn_lights_off(strip: ws.PixelStrip, runtime: float = 600):
@@ -103,11 +103,11 @@ def check_schedule(sleep_time: int = 60):
 if __name__ == "__main__":
     STRIP.begin()
     
-    with open("./times.txt", "w") as fi:
+    with open("./times.txt", "r") as fi:
         schedule.every().day.at(fi.readline().strip()).do(turn_lights_on, STRIP)
         schedule.every().day.at(fi.readline().strip()).do(turn_lights_off, STRIP)
     
     thread = Thread(target=check_schedule, args=[60])
     thread.start()
 
-    app.run(host= '0.0.0.0')
+    app.run(host='0.0.0.0')
