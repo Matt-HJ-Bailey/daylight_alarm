@@ -36,7 +36,7 @@ STRIP = ws.PixelStrip(NUM_LEDS, LED_PIN)
 
 app = Flask(__name__)
 app.config.from_object(CONFIG)
-app.debug = True
+app.debug = False 
 
 
 def get_weather(location: str = "Oxford,GB") -> str:
@@ -100,4 +100,4 @@ if __name__ == "__main__":
     thread = Thread(target=check_schedule, args=[60])
     thread.start()
 
-    app.run()
+    app.run(host= '0.0.0.0')

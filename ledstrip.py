@@ -1,6 +1,7 @@
 import rpi_ws281x as ws
 import random
 import time
+import os
 
 from collections import defaultdict
 from pyowm.owm import OWM
@@ -58,6 +59,7 @@ def read_api_keys(filename):
 
 
 if __name__ == "__main__":
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
     WEATHER_API_KEY = read_api_keys("./.apikey")["openweathermap"]
     NUM_LEDS = 150
     LED_PIN = 18
