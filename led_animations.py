@@ -204,4 +204,5 @@ if __name__ == "__main__":
     NUM_LEDS = 150
     LED_PIN = 18
     STRIP = ws.PixelStrip(NUM_LEDS, LED_PIN)
+    STRIP.begin()
     theater_chase_rainbow(STRIP)
