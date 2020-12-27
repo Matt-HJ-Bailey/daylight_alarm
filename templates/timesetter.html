@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Set the time</h1>
+    <form action="" method="post" novalidate>
+        {{ form.hidden_tag() }}
+        <p>
+            {{ form.hours.label }}<br>
+            {{ form.hours(size=32) }}
+        </p>
+        <p>
+            {{ form.minutes.label }}<br>
+            {{ form.minutes(size=32) }}
+        </p>
+        <p>{{ form.submit() }}</p>
+    </form>
+{% endblock %}
