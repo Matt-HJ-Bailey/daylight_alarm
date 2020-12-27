@@ -16,6 +16,7 @@ from sklearn.cluster import KMeans
 try:
     import rpi_ws281x as ws
 except ImportError:
+    print("Using stub")
     import ws_stub as ws
 
 class LightArray():
@@ -42,7 +43,7 @@ class LightArray():
         colors = self.image_to_colors(im)
         for i in range(colors.shape[0]):
             this_color = ws.Color(int(colors[i,0]), int(colors[i, 1]), int(colors[i, 2]))
-            strip.setPixelColor(ids[i], this_color)
+            strip.setPixelColor(int(ids[i]), this_color)
         strip.show()
         
     def blend_image_to_strip(self, strip, im, ids, time_over=600):
@@ -73,11 +74,13 @@ class LightArray():
 if __name__ == "__main__":
     IMAGE = Image.open("./sunrise.jpg")
     LIGHT_POS = pd.read_csv("./light_coordinates.csv")
-    LIGHT_ARR = np.vstack([LIGHT_POS["X"].to_numpy() / LIGHT_POS["X"].max(),
-                           LIGHT_POS["Y"].to_numpy() / LIGHT_POS["Y"].max()]).T
+    LIGHT_ARR = np.vstack([LIGHT_POS["Y"].to_numpy() / LIGHT_POS["Y"].max(),
+                           LIGHT_POS["X"].to_numpy() / LIGHT_POS["X"].max()]).T
     la = LightArray(LIGHT_ARR)
     colors = la.image_to_colors(IMAGE)
-    
-    FIG, AX = plt.subplots()
-    la.plot_onto(ax=AX, im=IMAGE)
-    
+    NUM_LEDS = 150
+    LED_PIN = 18
+    RUNTIME = 20 * 60
+    STRIP = ws.PixelStrip(NUM_LEDS, LED_PIN)
+    STRIP.begin()
+    la.image_to_strip(STRIP, IMAGE, LIGHT_POS["ID"]) 
