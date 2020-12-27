@@ -5,7 +5,7 @@ Created on Sun Dec 27 20:43:44 2020
 
 @author: matthew-bailey
 """
-
+import time
 import scipy.spatial
 from PIL import Image
 import numpy as np
@@ -41,9 +41,23 @@ class LightArray():
     def image_to_strip(self, strip, im, ids):
         colors = self.image_to_colors(im)
         for i in range(colors.shape[0]):
-            print(colors[i, 0], colors[i, 1], colors[i, 2])
             this_color = ws.Color(int(colors[i,0]), int(colors[i, 1]), int(colors[i, 2]))
             strip.setPixelColor(ids[i], this_color)
+        strip.show()
+        
+    def blend_image_to_strip(self, strip, im, ids, time_over=600):
+        colors = self.image_to_colors(im)
+        NUM_STEPS = 255
+        TIME_PER_STEP = time_over / NUM_STEPS
+        for step in range(NUM_STEPS):
+            time_before_set = time.time()
+            for i in range(colors.shape[0]):
+                this_color = ws.Color(*[int(item * step / NUM_STEPS)
+                                        for item in colors[i, :]])
+                strip.setPixelColor(ids[i], this_color)
+            time_diff = time.time() - time_before_set()
+            if time_diff < TIME_PER_STEP:
+                time.sleep(TIME_PER_STEP - time_diff)
         strip.show()
         
     def plot_onto(self, ax=None, im=None):
