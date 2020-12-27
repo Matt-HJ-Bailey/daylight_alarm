@@ -94,7 +94,7 @@ def change_time():
     return render_template('timesetter.html', title="Light Time", form=form)
 
 
-def check_schedule(sleep_time: int = 60):
+def check_schedule(sleep_time: int = 10):
     while True:
         schedule.run_pending()
         time.sleep(sleep_time)

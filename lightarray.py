@@ -16,6 +16,7 @@ from sklearn.cluster import KMeans
 try:
     import rpi_ws281x as ws
 except ImportError:
+    print("Using stub")
     import ws_stub as ws
 
 class LightArray():
@@ -40,10 +41,11 @@ class LightArray():
     
     def image_to_strip(self, strip, im, ids):
         colors = self.image_to_colors(im)
-        for i in range(colors.shape[0]):
-            print(colors[i, 0], colors[i, 1], colors[i, 2])
+        for i in range(colors.shape[0] -1, 0, -1):
             this_color = ws.Color(int(colors[i,0]), int(colors[i, 1]), int(colors[i, 2]))
-            strip.setPixelColor(ids[i], this_color)
+            this_color = ws.Color(128, 0, 0)
+            print(int(ids[i]))
+            strip.setPixelColor(int(ids[i]), this_color)
         strip.show()
         
     def plot_onto(self, ax=None, im=None):
@@ -63,7 +65,8 @@ if __name__ == "__main__":
                            LIGHT_POS["Y"].to_numpy() / LIGHT_POS["Y"].max()]).T
     la = LightArray(LIGHT_ARR)
     colors = la.image_to_colors(IMAGE)
-    
-    FIG, AX = plt.subplots()
-    la.plot_onto(ax=AX, im=IMAGE)
-    
+    NUM_LEDS = 150
+    LED_PIN = 18
+    RUNTIME = 20 * 60
+    STRIP = ws.PixelStrip(NUM_LEDS, LED_PIN) 
+    la.image_to_strip(STRIP, IMAGE, LIGHT_POS["ID"]) 
