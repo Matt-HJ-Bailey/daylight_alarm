@@ -6,7 +6,7 @@ try:
     import rpi_ws281x as ws
 except ImportError:
     import ws_stub as ws
-    
+
 import random
 import time
 
@@ -17,37 +17,41 @@ from lightarray import LightArray
 
 from typing import Optional, Iterable
 
-def display_image(strip: ws.PixelStrip,
-                  image_filename:str,
-runtime, reverse):
+
+def display_image(strip: ws.PixelStrip, image_filename: str, runtime, reverse):
     image = Image.open(image_filename)
     light_pos = pd.read_csv("./light_coordinates.csv")
-    light_arr= np.vstack([light_pos["X"].to_numpy() / light_pos["X"].max(),
-                          light_pos["Y"].to_numpy() / light_pos["Y"].max()]).T
+    light_arr = np.vstack(
+        [
+            light_pos["Y"].to_numpy() / light_pos["Y"].max(),
+            light_pos["X"].to_numpy() / light_pos["X"].max(),
+        ]
+    ).T
     la = LightArray(light_arr)
-    la.blend_image_to_strip(strip=strip, im=image, ids=light_pos["ID"], runtime=runtime, reverse=reverse)
-    
-def alternate_colors(strip: ws.PixelStrip,
-                     colors:Optional[Iterable[ws.Color]]=None):
+    la.blend_image_to_strip(
+        strip=strip, im=image, ids=light_pos["ID"], runtime=runtime, reverse=reverse
+    )
+
+
+def alternate_colors(strip: ws.PixelStrip, colors: Optional[Iterable[ws.Color]] = None):
     """
     Show a set of colours along the strip.
-    
+
     :param strip: the strip to show the colors on
     :param colors: a list of colors to show
     """
     if colors is None:
-        colors = [ws.Color(255, 0, 0),
-                  ws.Color(0, 255, 0),
-                  ws.Color(0, 0, 255)]
+        colors = [ws.Color(255, 0, 0), ws.Color(0, 255, 0), ws.Color(0, 0, 255)]
     for i in range(strip.numPixels()):
         strip.setPixelColor(i, colors[i % len(colors)])
     strip.show()
+
 
 def get_rainbow_color(pos: int) -> ws.Color:
     """
     Generate rainbow colors across 0-255 positions.
     :param pos: a position between 0 and 255
-    
+
     :return: a rainbow color for each position
     """
     if pos < 85:
@@ -63,7 +67,7 @@ def get_rainbow_color(pos: int) -> ws.Color:
 def color_wipe(strip: ws.PixelStrip, color: ws.Color, wait_ms: float = 50.0):
     """
     Wipe color across display a pixel at a time.
-    
+
     :param strip: the strip to animate
     :param color: the color to set each pixel to
     :param wait_ms: the time between animating each pixel, in milliseconds
@@ -79,7 +83,7 @@ def theater_chase(
 ):
     """
     Movie theater light style chaser animation.
-    
+
     :param strip: the strip to animate
     :param color: the color to set each pixel to
     :param wait_ms: the time between animating each pixel, in milliseconds
@@ -98,7 +102,7 @@ def theater_chase(
 def rainbow(strip: ws.PixelStrip, wait_ms: float = 20.0, iterations: int = 1):
     """
     Draw rainbow that fades across all pixels at once.
-    
+
     :param strip: the strip to animate
     :param wait_ms: the time between each fading step
     :param iterations: the number of times to play this animation
@@ -200,7 +204,11 @@ def sunrise_animation(strip, total_time=3600, reverse=False):
         time_diff = t_2 - t_1
         if time_diff < brightening_time / steps:
             time.sleep((brightening_time / steps) - time_diff)
-            
+    if reverse:
+        for pixel in range(strip.numPixels()):
+            strip.setPixelColor(pixel, 0)
+
+
 if __name__ == "__main__":
     NUM_LEDS = 150
     LED_PIN = 18

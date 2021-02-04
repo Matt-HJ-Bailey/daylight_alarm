@@ -9,7 +9,6 @@ from pyowm.owm import OWM
 from led_animations import dither_fade
 
 
-
 WEATHER_ANIMATIONS = defaultdict(lambda: sunrise_animation)
 
 

@@ -15,6 +15,7 @@ class TimeForm(FlaskForm):
     """
     Form to recieve two integers, as hours and minutes
     """
-    hours = IntegerField('Hours', validators=[NumberRange(min=0, max=23)])
-    minutes = IntegerField('Minutes', validators=[NumberRange(min=0, max=59)])
-    submit = SubmitField('Change Time')
+
+    hours = IntegerField("Hours", validators=[NumberRange(min=0, max=23)])
+    minutes = IntegerField("Minutes", validators=[NumberRange(min=0, max=59)])
+    submit = SubmitField("Change Time")
