@@ -132,7 +132,7 @@ class LightArray:
 
         for step in steps:
             color_arr = [ws.Color(0, 0, 0) for _ in range(strip.numPixels())]
-            interp_colors = gamma_adjust(colors[i, :] * step / NUM_STEPS)
+            interp_colors = colors * (step / NUM_STEPS)**2.3
             for i in range(colors.shape[0] - 1, 0, -1):
                 color_arr[int(ids[i])] = ws.Color(
                     *[int(round(item)) for item in interp_colors[i, :]]
