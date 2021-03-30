@@ -13,24 +13,8 @@ import time
 import pandas as pd
 from PIL import Image
 import numpy as np
-from lightarray import LightArray
 
-from typing import Optional, Iterable
-
-
-def display_image(strip: ws.PixelStrip, image_filename: str, runtime, reverse):
-    image = Image.open(image_filename)
-    light_pos = pd.read_csv("./light_coordinates.csv")
-    light_arr = np.vstack(
-        [
-            light_pos["Y"].to_numpy() / light_pos["Y"].max(),
-            light_pos["X"].to_numpy() / light_pos["X"].max(),
-        ]
-    ).T
-    la = LightArray(light_arr)
-    la.blend_image_to_strip(
-        strip=strip, im=image, ids=light_pos["ID"], runtime=runtime, reverse=reverse
-    )
+from typing import Optional, Iterable, Union
 
 
 def alternate_colors(strip: ws.PixelStrip, colors: Optional[Iterable[ws.Color]] = None):
@@ -138,10 +122,32 @@ def theater_chase_rainbow(strip, wait_ms=50):
 
 
 def dither_fade(
-    strip: ws.PixelStrip, new_color: ws.Color, leds_to_switch=None, dither_time=1
+    strip: ws.PixelStrip,
+    new_color: Union[ws.Color, np.array],
+    leds_to_switch: Optional[Iterable[int]] = None,
+    dither_time: float = 1,
 ):
-    # Dither in to a new color by randomly switching group_size
-    # at a time.
+    """
+    Dither in to a new set of colours by switching small batches of pixels.
+
+    Parameters
+    ---------
+    strip
+        the LED strip to animate
+    new_color
+        Either a single ws.Color or an array of them. Providing one colour acts as an array of that one colour.
+    leds_to_switch
+        Only dither these LEDs to leave specific elements static.
+    dither_time
+        the time over which to dither. Do not make this too short
+    """
+
+    try:
+        iter(new_color)
+    except TypeError:
+        # this is not iterable, therefore it is one colour.
+        # Make an array of that colour.
+        new_color = np.array([new_color for _ in range(strip.numPixels())])
 
     start_time = time.time()
     if leds_to_switch is None:
@@ -162,7 +168,7 @@ def dither_fade(
     while leds_to_switch:
         these_leds = [leds_to_switch.pop() for _ in range(batch_size) if leds_to_switch]
         for this_led in these_leds:
-            strip.setPixelColor(this_led, new_color)
+            strip.setPixelColor(this_led, new_color[this_led])
         time.sleep(dither_time / (batch_size * num_leds))
         strip.show()
 

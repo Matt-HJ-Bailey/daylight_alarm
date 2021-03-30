@@ -24,7 +24,8 @@ from flask import Flask, render_template, flash, redirect
 
 from config import Config
 from timeform import TimeForm
-from led_animations import sunrise_animation, alternate_colors, display_image
+from led_animations import sunrise_animation, alternate_colors
+from lightarray import display_image
 
 CONFIG = Config()
 
@@ -80,21 +81,32 @@ def get_weather(location: str = "Oxford,GB") -> str:
         return None
 
 
-def turn_lights_on(strip: ws.PixelStrip, runtime: float = 600):
-    print("Turning the lights on")
+def turn_lights_on(strip: ws.PixelStrip, runtime: float = RUNTIME):
+    print(f"Turning the lights on over {runtime}s")
+    start_time = time.time()
     weather = get_weather()
     print("The weather is", weather)
-    WEATHER_ANIMATIONS[weather](strip, runtime, reverse=False)
+    WEATHER_ANIMATIONS[weather](strip, runtime=runtime, reverse=False)
+    print(f"Animation done, took {time.time() - start_time}")
 
 
-def turn_lights_off(strip: ws.PixelStrip, runtime: float = 600):
-    print("Turning the lights off")
+def turn_lights_off(strip: ws.PixelStrip, runtime: float = RUNTIME):
+    print(f"Turning the lights off over {runtime}s")
     weather = get_weather()
     WEATHER_ANIMATIONS[weather](strip, runtime, reverse=True)
+    for i in range(strip.numPixels()):
+        strip.setPixelColor(i, ws.Color(0, 0, 0))
+    strip.show()
 
 
 @app.route("/", methods=["GET", "POST"])
 def change_time():
+    """
+    Set the regular time that the lights will come on.
+    This is taken from a web page with two boxes, containing hours.data and minutes.data
+
+    We write the times to a file to make sure that we keep them across running sessions.
+    """
     form = TimeForm()
     if form.validate_on_submit():
 
@@ -105,7 +117,7 @@ def change_time():
         # dates getting involved... argh!
         off_time = (
             datetime.datetime.combine(datetime.date.today(), on_time)
-            + datetime.timedelta(minutes=20)
+            + datetime.timedelta(seconds=RUNTIME)
         ).time()
 
         with open("./times.txt", "w") as fi:
