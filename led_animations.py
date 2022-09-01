@@ -2,183 +2,317 @@
 A set of animations for a WS2812b strip, taken from
 https://tutorials-raspberrypi.com/connect-control-raspberry-pi-ws2812-rgb-led-strips/
 """
-try:
-    import rpi_ws281x as ws
-except ImportError:
-    import ws_stub as ws
 
+from abc import ABC, abstractmethod
+from collections import deque
+import copy
 import random
 import time
+from typing import Optional, Iterable, Union
 
 import pandas as pd
 from PIL import Image
 import numpy as np
 
-from typing import Optional, Iterable, Union
+try:
+    import rpi_ws281x as ws
+except ImportError:
+    import ws_stub as ws
 
 
-def alternate_colors(strip: ws.PixelStrip, colors: Optional[Iterable[ws.Color]] = None):
+class Frame:
     """
-    Show a set of colours along the strip.
-
-    :param strip: the strip to show the colors on
-    :param colors: a list of colors to show
+    Single frame to display on the image
     """
-    if colors is None:
-        colors = [ws.Color(255, 0, 0), ws.Color(0, 255, 0), ws.Color(0, 0, 255)]
-    for i in range(strip.numPixels()):
-        strip.setPixelColor(i, colors[i % len(colors)])
-    strip.show()
 
+    def __init__(
+        self, strip: ws.PixelStrip, colors: Optional[Iterable[ws.Color]] = None
+    ):
+        """
+        Initialise this frame as a strip and associated colour array.
 
-def get_rainbow_color(pos: int) -> ws.Color:
-    """
-    Generate rainbow colors across 0-255 positions.
-    :param pos: a position between 0 and 255
-
-    :return: a rainbow color for each position
-    """
-    if pos < 85:
-        return ws.Color(pos * 3, 255 - pos * 3, 0)
-    elif pos < 170:
-        pos -= 85
-        return ws.Color(255 - pos * 3, 0, pos * 3)
-    else:
-        pos -= 170
-        return ws.Color(0, pos * 3, 255 - pos * 3)
-
-
-def color_wipe(strip: ws.PixelStrip, color: ws.Color, wait_ms: float = 50.0):
-    """
-    Wipe color across display a pixel at a time.
-
-    :param strip: the strip to animate
-    :param color: the color to set each pixel to
-    :param wait_ms: the time between animating each pixel, in milliseconds
-    """
-    for i in range(strip.numPixels()):
-        strip.setPixelColor(i, color)
-        strip.show()
-        time.sleep(wait_ms / 1000.0)
-
-
-def theater_chase(
-    strip: ws.PixelStrip, color: ws.Color, wait_ms: float = 50.0, iterations: int = 10
-):
-    """
-    Movie theater light style chaser animation.
-
-    :param strip: the strip to animate
-    :param color: the color to set each pixel to
-    :param wait_ms: the time between animating each pixel, in milliseconds
-    :param iterations: the number of times this animation will play
-    """
-    for j in range(iterations):
-        for q in range(3):
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i + q, color)
-            strip.show()
-            time.sleep(wait_ms / 1000.0)
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i + q, 0)
-
-
-def rainbow(strip: ws.PixelStrip, wait_ms: float = 20.0, iterations: int = 1):
-    """
-    Draw rainbow that fades across all pixels at once.
-
-    :param strip: the strip to animate
-    :param wait_ms: the time between each fading step
-    :param iterations: the number of times to play this animation
-    """
-    for j in range(256 * iterations):
-        for i in range(strip.numPixels()):
-            strip.setPixelColor(i, get_rainbow_color((i + j) & 255))
-        strip.show()
-        time.sleep(wait_ms / 1000.0)
-
-
-def rainbow_cycle(strip, wait_ms=20, iterations=5):
-    """Draw rainbow that uniformly distributes itself across all pixels."""
-    for j in range(256 * iterations):
-        for i in range(strip.numPixels()):
-            strip.setPixelColor(
-                i, get_rainbow_color((int(i * 256 / strip.numPixels()) + j) & 255)
+        Will pad the colours array to be the correct length if too small.
+        If too large, excess data are ignored.
+        Parameters
+        ----------
+        strip
+            The strip to display on
+        colours
+            24-bit RGB colours to display. If just one colour, will repeat across the array.
+        """
+        self.strip = strip
+        try:
+            iter(colors)
+            self.colors = np.asarray(colors, dtype=int)
+        except TypeError:
+            self.colors = np.array(
+                [colors for _ in range(self.strip.getNumPixels())], dtype=int
             )
-        strip.show()
-        time.sleep(wait_ms / 1000.0)
+
+    def show(self):
+        for i in range(self.strip.getNumPixels()):
+            if i < len(self.colors):
+                self.strip.setPixelColor(i, self.colors[i % len(self.colors)])
+        self.strip.show()
 
 
-def theater_chase_rainbow(strip, wait_ms=50):
-    """Rainbow movie theater light style chaser animation."""
-    for j in range(256):
-        for q in range(3):
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i + q, get_rainbow_color((i + j) % 255))
-            strip.show()
-            time.sleep(wait_ms / 1000.0)
-            for i in range(0, strip.numPixels(), 3):
-                strip.setPixelColor(i + q, 0)
+class Animation(ABC):
+    def __init__(self, strip):
+        self.strip = strip
+        self.frame_number = 0
+
+    def __iter__(self):
+        self.frame_number = 0
+        return self
+
+    @abstractmethod
+    def __next__(self):
+        self.frame_number += 1
+        return
+
+    def play(self, delay: float = 33.0 / 1000):
+        """
+        Play this animation on the strip
+
+        Parameters
+        ----------
+        delay
+            Time to wait between frames in ms
+        """
+        time_now = time.time()
+        for frame in self:
+            frame.show()
+            time_after = time.time()
+            dt = time_after - time_now
+            # print(f"Showing F{self.frame_number} with dt={dt}")
+            time.sleep(delay - dt)
+            time_now = time.time()
 
 
-def dither_fade(
-    strip: ws.PixelStrip,
-    new_color: Union[ws.Color, np.array],
-    leds_to_switch: Optional[Iterable[int]] = None,
-    dither_time: float = 1,
-):
+class AlternateColors(Animation):
     """
-    Dither in to a new set of colours by switching small batches of pixels.
+    Show a set of alternating colours along the strip.
 
     Parameters
-    ---------
+    ----------
     strip
-        the LED strip to animate
-    new_color
-        Either a single ws.Color or an array of them. Providing one colour acts as an array of that one colour.
-    leds_to_switch
-        Only dither these LEDs to leave specific elements static.
-    dither_time
-        the time over which to dither. Do not make this too short
+        The strip to show the colors on
+    colors
+        a list of colors to show, can be None in which case R, G, B is used.
     """
 
-    try:
-        iter(new_color)
-    except TypeError:
-        # this is not iterable, therefore it is one colour.
-        # Make an array of that colour.
-        new_color = np.array([new_color for _ in range(strip.numPixels())])
+    def __init__(self, strip: ws.PixelStrip, colors: Optional[np.ndarray] = None):
+        super().__init__(strip)
+        if colors is not None:
+            self.color_arr = colors
+        else:
+            self.color_arr = np.array(
+                [ws.Color(255, 0, 0), ws.Color(0, 255, 0), ws.Color(0, 0, 255)]
+            )
 
-    start_time = time.time()
-    if leds_to_switch is None:
-        leds_to_switch = [i for i in range(strip.numPixels())]
-    random.shuffle(leds_to_switch)
+    def __next__(self):
+        super().__next__()
+        return Frame(
+            self.strip,
+            [
+                self.color_arr[(i + self.frame_number) % len(self.color_arr)]
+                for i in range(self.strip.getNumPixels())
+            ],
+        )
 
-    num_leds = len(leds_to_switch)
-    # As a rough rule of thumb, it takes 0.005 seconds to switch an LED and render an
-    # update. Calculate the group size dynamically to fit into our time budget.
 
-    min_update_time = 0.005
-    switches_in_time = int(round(dither_time / min_update_time))
-    batch_size = int(round((strip.numPixels() / switches_in_time) + 0.5))
-    if batch_size != 1:
-        num_batches = int(round((strip.numPixels() / batch_size)))
-        batch_size = int(round((strip.numPixels() / num_batches)))
+class RainbowColors(Animation):
+    """
+    Generate rainbow colors across the strip.
+    """
 
-    while leds_to_switch:
-        these_leds = [leds_to_switch.pop() for _ in range(batch_size) if leds_to_switch]
-        for this_led in these_leds:
-            strip.setPixelColor(this_led, new_color[this_led])
-        time.sleep(dither_time / (batch_size * num_leds))
-        strip.show()
+    def __init__(self, strip):
+        super().__init__(strip)
 
-    # Sometimes we go too fast with the switching, as
-    # the batching approximation is horrible. If we
-    # do, just chill here before moving on
-    end_time = time.time()
-    time_diff = end_time - start_time
-    if time_diff < dither_time:
-        time.sleep(dither_time - time_diff)
+    def __next__(self):
+        colors = deque([0 for _ in range(self.strip.getNumPixels())])
+        for i in range(self.strip.getNumPixels()):
+            if i < 85:
+                colors[i] = ws.Color(i * 3, 255 - i * 3, 0)
+            elif i < 170:
+                colors[i] = ws.Color(255 - (i - 85) * 3, 0, (i - 85) * 3)
+            else:
+                colors[i] = ws.Color((i - 170) * 3, 255 - (i - 170) * 3, 0)
+        colors.rotate(self.frame_number)
+        super().__next__()
+        return Frame(self.strip, colors)
+
+
+class ColorWipe(Animation):
+    def __init__(self, strip: ws.PixelStrip, color: ws.Color):
+        super().__init__(strip)
+        self.color = color
+
+    def __next__(self):
+        if self.frame_number >= self.strip.getNumPixels():
+            raise StopIteration
+        colors = [ws.Color(0, 0, 0) for _ in range(self.strip.getNumPixels())]
+        for i in range(self.frame_number):
+            colors[i] = self.color
+        super().__next__()
+        return Frame(self.strip, colors)
+
+
+class TheatreChase(Animation):
+    """
+    Movie theatre style light cahse animation
+    """
+
+    def __init__(self, strip: ws.PixelStrip, color: ws.Color, max_iterations: int = 10):
+        super().__init__(strip)
+        self.max_iterations = max_iterations
+        self.color = color
+
+    def __next__(self):
+        if self.frame_number >= self.max_iterations:
+            raise StopIteration
+        colors = [ws.Color(0, 0, 0) for _ in range(self.strip.getNumPixels())]
+        for i in range(len(colors), 3):
+            colors[(i + self.frame_number) % len(colors)] = self.color
+        super().__next__()
+        return Frame(self.strip, colors)
+
+
+class DitherFade(Animation):
+    """
+    Fade between two images by randomly swapping pixels.
+    """
+
+    def __init__(
+        self,
+        strip: ws.PixelStrip,
+        old_frame: Frame,
+        new_frame: Frame,
+        batch_size: int = 16,
+    ):
+        super().__init__(strip)
+        self.current_frame = copy.deepcopy(old_frame)
+        self.new_frame = new_frame
+        self.batch_size = batch_size
+        rng = np.random.default_rng()
+        self.remaining_pixels = [i for i in range(self.strip.getNumPixels())]
+        rng.shuffle(self.remaining_pixels)
+
+    def __next__(self):
+        if not self.remaining_pixels:
+            raise StopIteration
+
+        for _ in range(self.batch_size):
+            try:
+                idx = self.remaining_pixels.pop()
+            except IndexError:
+                break
+            self.current_frame.colors[idx] = self.new_frame.colors[idx]
+        super().__next__()
+        return self.current_frame
+
+
+class LerpFade(Animation):
+    """
+    Linearly fade between two images by interpolating pixels
+    """
+
+    def __init__(
+        self, strip: ws.PixelStrip, old_frame: Frame, new_frame: Frame, steps=255
+    ):
+        super().__init__(strip)
+        self.old_frame = old_frame
+        self.new_frame = new_frame
+        self.delta = (new_frame.colors - old_frame.colors).astype(float) / steps
+        self.steps = steps
+
+    def __next__(self):
+        if self.frame_number >= self.steps:
+            raise StopIteration
+
+        current_colors = self.old_frame.colors + (
+            self.delta * self.frame_number
+        ).astype(int)
+        super().__next__()
+        return Frame(self.strip, current_colors)
+
+
+class DitherLerpFade(Animation):
+    """
+    Fade between two images by interpolating pixels and dithering each step
+    """
+
+    def __init__(
+        self,
+        strip: ws.PixelStrip,
+        old_frame: Frame,
+        new_frame: Frame,
+        batch_size=16,
+        steps=255,
+    ):
+        super().__init__(strip)
+        self.delta = (new_frame.colors - old_frame.colors).astype(float) / steps
+        self.steps = steps
+        self.batch_size = batch_size
+        self.remaining_pixels = self.get_random_pixels()
+        self.lerp_step = 0
+        self.old_frame = copy.deepcopy(old_frame)
+        self.current_frame = copy.deepcopy(old_frame)
+        self.next_frame = self.get_next_lerp_frame()
+
+    def get_random_pixels(self, seed: Optional[int] = None) -> Iterable[int]:
+        """
+        Get a set of pixels in a random order
+
+        Parameters
+        ----------
+        seed
+            Seed for the random number generator
+
+        Returns
+        -------
+            list of pixel ids in a random order
+        """
+        rng = np.random.default_rng(seed=seed)
+        remaining_pixels = [i for i in range(self.strip.getNumPixels())]
+        rng.shuffle(remaining_pixels)
+        return remaining_pixels
+
+    def get_next_lerp_frame(self):
+        """
+        Get the next linearly interpolated frame
+        """
+        self.lerp_step += 1
+        return Frame(
+            self.strip,
+            self.old_frame.colors + (self.delta * self.lerp_step).astype(int),
+        )
+
+    def __next__(self):
+        if not self.remaining_pixels:
+            self.current_frame = self.next_frame
+            self.next_frame = self.get_next_lerp_frame()
+            self.remaining_pixels = self.get_random_pixels()
+
+        for _ in range(self.batch_size):
+            try:
+                idx = self.remaining_pixels.pop()
+            except IndexError:
+                break
+            self.current_frame.colors[idx] = self.next_frame.colors[idx]
+        super().__next__()
+        return self.current_frame
+
+
+class SunriseAnimation(Animation):
+    def __init__(self, strip, reverse=False, steps: int = 256):
+        super().__init__(strip)
+        self.reverse = False
+        self.steps = steps
+
+    def __next__(self):
+        sunrise_width = int(self.strip.getNumPixels() * 0.1)
+        sunrise_start = (self.frame_number / steps) * self.strip.getNumPixels()
 
 
 def sunrise_animation(strip, total_time=3600, reverse=False):
@@ -190,10 +324,10 @@ def sunrise_animation(strip, total_time=3600, reverse=False):
         frac = step / steps
         if reverse:
             frac = 1.0 - frac
-        SKYBLUE = ws.Color(
+        skyblue = ws.Color(
             max(int(135 * frac), 1), max(int(206 * frac), 1), max(int(235 * frac), 1)
         )
-        SUNRISE = ws.Color(
+        sunrise = ws.Color(
             max(int(255 * frac), 1), max(int(191 * frac), 1), max(int(39 * frac), 1)
         )
         sunrise_width = int(strip.numPixels() * 0.1)
@@ -203,9 +337,9 @@ def sunrise_animation(strip, total_time=3600, reverse=False):
         for pixel in range(sunrise_start, sunrise_end):
             if pixel in sky_pixels:
                 sky_pixels.remove(pixel)
-            strip.setPixelColor(pixel, SUNRISE)
+            strip.setPixelColor(pixel, sunrise)
         t_1 = time.time()
-        dither_fade(strip, SKYBLUE, sky_pixels, (brightening_time - 1) / steps)
+        dither_fade(strip, skyblue, sky_pixels, (brightening_time - 1) / steps)
         t_2 = time.time()
         time_diff = t_2 - t_1
         if time_diff < brightening_time / steps:
@@ -220,4 +354,10 @@ if __name__ == "__main__":
     LED_PIN = 18
     STRIP = ws.PixelStrip(NUM_LEDS, LED_PIN)
     STRIP.begin()
-    theater_chase_rainbow(STRIP)
+    anim = DitherLerpFade(
+        STRIP,
+        Frame(STRIP, ws.Color(0, 0, 0)),
+        Frame(STRIP, ws.Color(255, 255, 255)),
+        steps=16,
+    )
+    anim.play(delay=0.1)

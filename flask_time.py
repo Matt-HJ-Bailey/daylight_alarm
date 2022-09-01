@@ -23,33 +23,13 @@ from pyowm.owm import OWM
 from flask import Flask, render_template, flash, redirect
 
 from config import Config
-from timeform import TimeForm
+from time_form import TimeForm
 from led_animations import sunrise_animation, alternate_colors
-from lightarray import display_image
+from weather_animations import weather_animations
+
+logger = logging.get_logger(__name__)
 
 CONFIG = Config()
-
-WEATHER_ANIMATIONS = defaultdict(lambda: sunrise_animation)
-WEATHER_ANIMATIONS["Clear"] = lambda strip, runtime, reverse: display_image(
-    strip=strip, image_filename="sunrise.jpg", runtime=runtime, reverse=reverse
-)
-WEATHER_ANIMATIONS["Rain"] = lambda strip, runtime, reverse: display_image(
-    strip=strip, image_filename="rain.jpg", runtime=runtime, reverse=reverse
-)
-
-WEATHER_ANIMATIONS["Snow"] = lambda strip, runtime, reverse: display_image(
-    strip=strip, image_filename="snow.jpg", runtime=runtime, reverse=reverse
-)
-WEATHER_ANIMATIONS["Thunderstorm"] = lambda strip, runtime, reverse: display_image(
-    strip=strip, image_filename="thunderstorm.jpg", runtime=runtime, reverse=reverse
-)
-WEATHER_ANIMATIONS["Drizzle"] = lambda strip, runtime, reverse: display_image(
-    strip=strip, image_filename="drizzle.jpeg", runtime=runtime, reverse=reverse
-)
-
-WEATHER_ANIMATIONS["Clouds"] = lambda strip, runtime, reverse: display_image(
-    strip=strip, image_filename="clouds.jpeg", runtime=runtime, reverse=reverse
-)
 
 NUM_LEDS = 150
 LED_PIN = 18
@@ -86,14 +66,14 @@ def turn_lights_on(strip: ws.PixelStrip, runtime: float = RUNTIME):
     start_time = time.time()
     weather = get_weather()
     print("The weather is", weather)
-    WEATHER_ANIMATIONS[weather](strip, runtime=runtime, reverse=False)
+    weather_animations[weather](strip, runtime=runtime, reverse=False)
     print(f"Animation done, took {time.time() - start_time}")
 
 
 def turn_lights_off(strip: ws.PixelStrip, runtime: float = RUNTIME):
     print(f"Turning the lights off over {runtime}s")
     weather = get_weather()
-    WEATHER_ANIMATIONS[weather](strip, runtime, reverse=True)
+    weather_animations[weather](strip, runtime, reverse=True)
     for i in range(strip.numPixels()):
         strip.setPixelColor(i, ws.Color(0, 0, 0))
     strip.show()
